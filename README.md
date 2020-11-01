@@ -1,213 +1,175 @@
-[![Build Status](https://travis-ci.org/firebase/php-jwt.png?branch=master)](https://travis-ci.org/firebase/php-jwt)
-[![Latest Stable Version](https://poser.pugx.org/firebase/php-jwt/v/stable)](https://packagist.org/packages/firebase/php-jwt)
-[![Total Downloads](https://poser.pugx.org/firebase/php-jwt/downloads)](https://packagist.org/packages/firebase/php-jwt)
-[![License](https://poser.pugx.org/firebase/php-jwt/license)](https://packagist.org/packages/firebase/php-jwt)
+[![Packagist](https://img.shields.io/packagist/v/alancting/php-microsoft-jwt?style=for-the-badge)](https://packagist.org/packages/alancting/php-microsoft-jwt)
+[![GitHub](https://img.shields.io/github/v/release/alancting/php-microsoft-jwt?label=GitHub&style=for-the-badge)](https://github.com/alancting/php-microsoft-jwt)
+[![Test](https://img.shields.io/github/workflow/status/alancting/php-microsoft-jwt/PHP%20Test?label=TEST&style=for-the-badge)](https://github.com/alancting/php-microsoft-jwt)
+[![Coverage Status](https://img.shields.io/coveralls/github/alancting/php-microsoft-jwt/master?style=for-the-badge)](https://coveralls.io/github/alancting/php-microsoft-jwt?branch=master)
+[![GitHub license](https://img.shields.io/github/license/alancting/php-microsoft-jwt?color=green&style=for-the-badge)](https://github.com/alancting/php-microsoft-jwt/blob/master/LICENCE)  
+[![firebase/php-jwt Version](https://img.shields.io/static/v1?label=firebase%2Fphp-jwt&message=5.2.0&color=blue&style=for-the-badge)](https://github.com/firebase/php-jwt/tree/v5.2.0)
 
-PHP-JWT
-=======
-A simple library to encode and decode JSON Web Tokens (JWT) in PHP, conforming to [RFC 7519](https://tools.ietf.org/html/rfc7519).
+# php-microsoft-jwt
 
-Installation
-------------
+A simple library to validate and decode Microsoft Azure Active Directory ([Azure AD](https://docs.microsoft.com/en-us/azure/active-directory/develop/v2-app-types)), Microsoft Active Directory Federation Services (ADFS) JSON Web Tokens (JWT) in PHP, conforming to [RFC 7519](https://tools.ietf.org/html/rfc7519).
 
-Use composer to manage your dependencies and download PHP-JWT:
+**Forked From [firebase/php-jwt](https://github.com/firebase/php-jwt)**
+
+## Installation
+
+Use composer to manage your dependencies and download php-microsoft-jwt:
 
 ```bash
-composer require firebase/php-jwt
+composer require alancting/php-microsoft-jwt
 ```
 
-Example
--------
+## Example
+
+### ADFS
+
 ```php
 <?php
-use \Firebase\JWT\JWT;
 
-$key = "example_key";
-$payload = array(
-    "iss" => "http://example.org",
-    "aud" => "http://example.com",
-    "iat" => 1356999524,
-    "nbf" => 1357000000
-);
+use Alancting\Microsoft\JWT\Adfs\AdfsConfiguration;
+use Alancting\Microsoft\JWT\Adfs\AdfsAccessTokenJWT;
+use Alancting\Microsoft\JWT\Adfs\AdfsIdTokenJWT;
+
+...
 
 /**
- * IMPORTANT:
- * You must specify supported algorithms for your application. See
- * https://tools.ietf.org/html/draft-ietf-jose-json-web-algorithms-40
- * for a list of spec-compliant algorithms.
- */
-$jwt = JWT::encode($payload, $key);
-$decoded = JWT::decode($jwt, $key, array('HS256'));
-
-print_r($decoded);
-
-/*
- NOTE: This will now be an object instead of an associative array. To get
- an associative array, you will need to cast it as such:
-*/
-
-$decoded_array = (array) $decoded;
-
-/**
- * You can add a leeway to account for when there is a clock skew times between
- * the signing and verifying servers. It is recommended that this leeway should
- * not be bigger than a few minutes.
+ * AdfsConfiguration class will go to https://{you_asfs_hostname}/adfs/.well-known/openid-configuration to parse the configuration for your application
  *
- * Source: http://self-issued.info/docs/draft-ietf-oauth-json-web-token.html#nbfDef
  */
-JWT::$leeway = 60; // $leeway in seconds
-$decoded = JWT::decode($jwt, $key, array('HS256'));
+$config_options = [
+  'client_id' => '{client_id}',
+  'hostname' => '{you_asfs_hostname}',
+];
 
-?>
+/**
+ * You can also specific the local configuration by
+ */
+// $config_options = [
+//   'client_id' => '{client_id}',
+//   'config_uri' => 'local_path_to_configuration_json',
+// ];
+
+$config = new AdfsConfiguration($config_options);
+
+$id_token = 'adfs.id.token.jwt';
+$access_token = 'adfs.access.token.jwt';
+
+/**
+ * If id token is invalid, exception will be thrown.
+ */
+$id_token_jwt = new AdfsIdTokenJWT($config, $id_token);
+echo "\n";
+// Getting payload from id token
+print_r($id_token_jwt->getPayload());
+echo "\n";
+// Getting value from payload by attribute of id token
+print_r($id_token_jwt->get('attribute_name'));
+echo "\n";
+
+/**
+ * If id token is invalid, exception will be thrown.
+ * To validate and decode access token jwt, you need to pass $audience (scope name of your app)
+ */
+$access_token_jwt = new AdfsAccessTokenJWT($config, $access_token, $audience);
+echo "\n";
+// Getting payload from access token
+print_r($access_token_jwt->getPayload());
+echo "\n";
+// Getting value from payload by attribute of access token
+print_r($access_token_jwt->get('attribute_name'));
+echo "\n";
+
+/**
+ * You might want to 'cache' the tokens for expire validation
+ * To check whether the access token and id token are expired, simply call
+ */
+echo ($id_token_jwt->isExpired()) ? 'Id token is expired' : 'Id token is valid';
+echo ($id_token->isExpired()) ? 'Access token is expired' : 'Access token is valid';
 ```
-Example with RS256 (openssl)
-----------------------------
+
+### Azure Ad
+
 ```php
 <?php
-use \Firebase\JWT\JWT;
 
-$privateKey = <<<EOD
------BEGIN RSA PRIVATE KEY-----
-MIICXAIBAAKBgQC8kGa1pSjbSYZVebtTRBLxBz5H4i2p/llLCrEeQhta5kaQu/Rn
-vuER4W8oDH3+3iuIYW4VQAzyqFpwuzjkDI+17t5t0tyazyZ8JXw+KgXTxldMPEL9
-5+qVhgXvwtihXC1c5oGbRlEDvDF6Sa53rcFVsYJ4ehde/zUxo6UvS7UrBQIDAQAB
-AoGAb/MXV46XxCFRxNuB8LyAtmLDgi/xRnTAlMHjSACddwkyKem8//8eZtw9fzxz
-bWZ/1/doQOuHBGYZU8aDzzj59FZ78dyzNFoF91hbvZKkg+6wGyd/LrGVEB+Xre0J
-Nil0GReM2AHDNZUYRv+HYJPIOrB0CRczLQsgFJ8K6aAD6F0CQQDzbpjYdx10qgK1
-cP59UHiHjPZYC0loEsk7s+hUmT3QHerAQJMZWC11Qrn2N+ybwwNblDKv+s5qgMQ5
-5tNoQ9IfAkEAxkyffU6ythpg/H0Ixe1I2rd0GbF05biIzO/i77Det3n4YsJVlDck
-ZkcvY3SK2iRIL4c9yY6hlIhs+K9wXTtGWwJBAO9Dskl48mO7woPR9uD22jDpNSwe
-k90OMepTjzSvlhjbfuPN1IdhqvSJTDychRwn1kIJ7LQZgQ8fVz9OCFZ/6qMCQGOb
-qaGwHmUK6xzpUbbacnYrIM6nLSkXgOAwv7XXCojvY614ILTK3iXiLBOxPu5Eu13k
-eUz9sHyD6vkgZzjtxXECQAkp4Xerf5TGfQXGXhxIX52yH+N2LtujCdkQZjXAsGdm
-B2zNzvrlgRmgBrklMTrMYgm1NPcW+bRLGcwgW2PTvNM=
------END RSA PRIVATE KEY-----
-EOD;
+use Alancting\Microsoft\JWT\AzureAd\AzureAdConfiguration;
+use Alancting\Microsoft\JWT\AzureAd\AzureAdAccessTokenJWT;
+use Alancting\Microsoft\JWT\AzureAd\AzureAdIdTokenJWT;
 
-$publicKey = <<<EOD
------BEGIN PUBLIC KEY-----
-MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQC8kGa1pSjbSYZVebtTRBLxBz5H
-4i2p/llLCrEeQhta5kaQu/RnvuER4W8oDH3+3iuIYW4VQAzyqFpwuzjkDI+17t5t
-0tyazyZ8JXw+KgXTxldMPEL95+qVhgXvwtihXC1c5oGbRlEDvDF6Sa53rcFVsYJ4
-ehde/zUxo6UvS7UrBQIDAQAB
------END PUBLIC KEY-----
-EOD;
+...
 
-$payload = array(
-    "iss" => "example.org",
-    "aud" => "example.com",
-    "iat" => 1356999524,
-    "nbf" => 1357000000
-);
+/**
+ * AzureAdConfiguration class will go to https://login.microsoftonline.com/{tenant}/v2.0/.well-known/openid-configuration to parse the configuration for your application
+ */
+$config_options = [
+  'tenant' => '{tenant_id} | common | organizations | consumers',
+  'tenant_id' => '{tenant_id}',
+  'client_id' => '{client_id}'
+];
 
-$jwt = JWT::encode($payload, $privateKey, 'RS256');
-echo "Encode:\n" . print_r($jwt, true) . "\n";
+/**
+ * You can also specific the local configuration by
+ */
+// $config_options = [
+//   'tenant' => '{tenant_id} | common | organizations | consumers',
+//   'tenant_id' => '{tenant_id}',
+//   'client_id' => '{client_id}'
+//   'config_uri' => 'local_path_to_configuration_json',
+// ];
 
-$decoded = JWT::decode($jwt, $publicKey, array('RS256'));
+$config = new AzureAdConfiguration($config_options);
 
-/*
- NOTE: This will now be an object instead of an associative array. To get
- an associative array, you will need to cast it as such:
-*/
+$id_token = 'azure_ad.id.token.jwt';
+$access_token = 'azure_ad.access.token.jwt';
 
-$decoded_array = (array) $decoded;
-echo "Decode:\n" . print_r($decoded_array, true) . "\n";
-?>
+/**
+ * If id token is invalid, exception will be thrown.
+ */
+$id_token_jwt = new AzureAdIdTokenJWT($config, $id_token);
+echo "\n";
+/**
+ * You could also pass $audience if needed
+ */
+// $id_token_jwt = new AzureAdIdTokenJWT($config, $id_token, $audience);
+// echo "\n";
+
+// Getting payload from id token
+print_r($id_token_jwt->getPayload());
+echo "\n";
+// Getting value from payload by attribute of id token
+print_r($id_token_jwt->get('attribute_name'));
+echo "\n";
+
+/**
+ * If id token is invalid, exception will be thrown.
+ * To validate and decode access token jwt, you need to pass $audience (scope name of your app)
+ */
+$access_token_jwt = new AzureAdAccessTokenJWT($config, $access_token, $audience);
+echo "\n";
+// Getting payload from access token
+print_r($access_token_jwt->getPayload());
+echo "\n";
+// Getting value from payload by attribute of access token
+print_r($access_token_jwt->get('attribute_name'));
+echo "\n";
+
+/**
+ * You might want to 'cache' the tokens for expire validation
+ * To check whether the access token and id token are expired, simply call
+ */
+echo ($id_token_jwt->isExpired()) ? 'Id token is expired' : 'Id token is valid';
+echo ($id_token->isExpired()) ? 'Access token is expired' : 'Access token is valid';
 ```
 
-Using JWKs
-----------
+## Tests
 
-```php
-// Set of keys. The "keys" key is required. For example, the JSON response to
-// this endpoint: https://www.gstatic.com/iap/verify/public_key-jwk
-$jwks = ['keys' => []];
-
-// JWK::parseKeySet($jwks) returns an associative array of **kid** to private
-// key. Pass this as the second parameter to JWT::decode.
-JWT::decode($payload, JWK::parseKeySet($jwks), $supportedAlgorithm);
-```
-
-Changelog
----------
-
-#### 5.0.0 / 2017-06-26
-- Support RS384 and RS512.
-  See [#117](https://github.com/firebase/php-jwt/pull/117). Thanks [@joostfaassen](https://github.com/joostfaassen)!
-- Add an example for RS256 openssl.
-  See [#125](https://github.com/firebase/php-jwt/pull/125). Thanks [@akeeman](https://github.com/akeeman)!
-- Detect invalid Base64 encoding in signature.
-  See [#162](https://github.com/firebase/php-jwt/pull/162). Thanks [@psignoret](https://github.com/psignoret)!
-- Update `JWT::verify` to handle OpenSSL errors.
-  See [#159](https://github.com/firebase/php-jwt/pull/159). Thanks [@bshaffer](https://github.com/bshaffer)!
-- Add `array` type hinting to `decode` method
-  See [#101](https://github.com/firebase/php-jwt/pull/101). Thanks [@hywak](https://github.com/hywak)!
-- Add all JSON error types.
-  See [#110](https://github.com/firebase/php-jwt/pull/110). Thanks [@gbalduzzi](https://github.com/gbalduzzi)!
-- Bugfix 'kid' not in given key list.
-  See [#129](https://github.com/firebase/php-jwt/pull/129). Thanks [@stampycode](https://github.com/stampycode)!
-- Miscellaneous cleanup, documentation and test fixes.
-  See [#107](https://github.com/firebase/php-jwt/pull/107), [#115](https://github.com/firebase/php-jwt/pull/115),
-  [#160](https://github.com/firebase/php-jwt/pull/160), [#161](https://github.com/firebase/php-jwt/pull/161), and
-  [#165](https://github.com/firebase/php-jwt/pull/165). Thanks [@akeeman](https://github.com/akeeman),
-  [@chinedufn](https://github.com/chinedufn), and [@bshaffer](https://github.com/bshaffer)!
-
-#### 4.0.0 / 2016-07-17
-- Add support for late static binding. See [#88](https://github.com/firebase/php-jwt/pull/88) for details. Thanks to [@chappy84](https://github.com/chappy84)!
-- Use static `$timestamp` instead of `time()` to improve unit testing. See [#93](https://github.com/firebase/php-jwt/pull/93) for details. Thanks to [@josephmcdermott](https://github.com/josephmcdermott)!
-- Fixes to exceptions classes. See [#81](https://github.com/firebase/php-jwt/pull/81) for details. Thanks to [@Maks3w](https://github.com/Maks3w)!
-- Fixes to PHPDoc. See [#76](https://github.com/firebase/php-jwt/pull/76) for details. Thanks to [@akeeman](https://github.com/akeeman)!
-
-#### 3.0.0 / 2015-07-22
-- Minimum PHP version updated from `5.2.0` to `5.3.0`.
-- Add `\Firebase\JWT` namespace. See
-[#59](https://github.com/firebase/php-jwt/pull/59) for details. Thanks to
-[@Dashron](https://github.com/Dashron)!
-- Require a non-empty key to decode and verify a JWT. See
-[#60](https://github.com/firebase/php-jwt/pull/60) for details. Thanks to
-[@sjones608](https://github.com/sjones608)!
-- Cleaner documentation blocks in the code. See
-[#62](https://github.com/firebase/php-jwt/pull/62) for details. Thanks to
-[@johanderuijter](https://github.com/johanderuijter)!
-
-#### 2.2.0 / 2015-06-22
-- Add support for adding custom, optional JWT headers to `JWT::encode()`. See
-[#53](https://github.com/firebase/php-jwt/pull/53/files) for details. Thanks to
-[@mcocaro](https://github.com/mcocaro)!
-
-#### 2.1.0 / 2015-05-20
-- Add support for adding a leeway to `JWT:decode()` that accounts for clock skew
-between signing and verifying entities. Thanks to [@lcabral](https://github.com/lcabral)!
-- Add support for passing an object implementing the `ArrayAccess` interface for
-`$keys` argument in `JWT::decode()`. Thanks to [@aztech-dev](https://github.com/aztech-dev)!
-
-#### 2.0.0 / 2015-04-01
-- **Note**: It is strongly recommended that you update to > v2.0.0 to address
-  known security vulnerabilities in prior versions when both symmetric and
-  asymmetric keys are used together.
-- Update signature for `JWT::decode(...)` to require an array of supported
-  algorithms to use when verifying token signatures.
-
-
-Tests
------
 Run the tests using phpunit:
 
 ```bash
-$ pear install PHPUnit
-$ phpunit --configuration phpunit.xml.dist
-PHPUnit 3.7.10 by Sebastian Bergmann.
-.....
-Time: 0 seconds, Memory: 2.50Mb
-OK (5 tests, 5 assertions)
+$ composer install
+$ composer run test
 ```
 
-New Lines in private keys
------
+## License
 
-If your private key contains `\n` characters, be sure to wrap it in double quotes `""`
-and not single quotes `''` in order to properly interpret the escaped characters.
-
-License
--------
 [3-Clause BSD](http://opensource.org/licenses/BSD-3-Clause).

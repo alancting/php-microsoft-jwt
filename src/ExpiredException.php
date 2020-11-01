@@ -1,5 +1,6 @@
 <?php
-namespace Firebase\JWT;
+
+namespace Alancting\Microsoft\JWT;
 
 class ExpiredException extends \UnexpectedValueException
 {

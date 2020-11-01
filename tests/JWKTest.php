@@ -1,7 +1,11 @@
 <?php
-namespace Firebase\JWT;
+
+namespace Alancting\Microsoft\Tests;
 
 use PHPUnit\Framework\TestCase;
+
+use Alancting\Microsoft\JWT\JWT;
+use Alancting\Microsoft\JWT\JWK;
 
 class JWKTest extends TestCase
 {
@@ -16,8 +20,8 @@ class JWKTest extends TestCase
             'JWK must contain a "kty" parameter'
         );
 
-        $badJwk = array('kid' => 'foo');
-        $keys = JWK::parseKeySet(array('keys' => array($badJwk)));
+        $badJwk = ['kid' => 'foo'];
+        $keys = JWK::parseKeySet(['keys' => [$badJwk]]);
     }
 
     public function testInvalidAlgorithm()
@@ -27,8 +31,8 @@ class JWKTest extends TestCase
             'No supported algorithms found in JWK Set'
         );
 
-        $badJwk = array('kty' => 'BADALG');
-        $keys = JWK::parseKeySet(array('keys' => array($badJwk)));
+        $badJwk = ['kty' => 'BADALG'];
+        $keys = JWK::parseKeySet(['keys' => [$badJwk]]);
     }
 
     public function testParseJwkKeySet()
@@ -63,12 +67,12 @@ class JWKTest extends TestCase
     public function testDecodeByJwkKeySetTokenExpired()
     {
         $privKey1 = file_get_contents(__DIR__ . '/rsa1-private.pem');
-        $payload = array('exp' => strtotime('-1 hour'));
+        $payload = ['exp' => strtotime('-1 hour')];
         $msg = JWT::encode($payload, $privKey1, 'RS256', 'jwk1');
 
-        $this->setExpectedException('Firebase\JWT\ExpiredException');
+        $this->setExpectedException('Alancting\Microsoft\JWT\ExpiredException');
 
-        JWT::decode($msg, self::$keys, array('RS256'));
+        JWT::decode($msg, self::$keys, ['RS256']);
     }
 
     /**
@@ -77,12 +81,12 @@ class JWKTest extends TestCase
     public function testDecodeByJwkKeySet()
     {
         $privKey1 = file_get_contents(__DIR__ . '/rsa1-private.pem');
-        $payload = array('sub' => 'foo', 'exp' => strtotime('+10 seconds'));
+        $payload = ['sub' => 'foo', 'exp' => strtotime('+10 seconds')];
         $msg = JWT::encode($payload, $privKey1, 'RS256', 'jwk1');
 
-        $result = JWT::decode($msg, self::$keys, array('RS256'));
+        $result = JWT::decode($msg, self::$keys, ['RS256']);
 
-        $this->assertEquals("foo", $result->sub);
+        $this->assertEquals('foo', $result->sub);
     }
 
     /**
@@ -91,12 +95,12 @@ class JWKTest extends TestCase
     public function testDecodeByMultiJwkKeySet()
     {
         $privKey2 = file_get_contents(__DIR__ . '/rsa2-private.pem');
-        $payload = array('sub' => 'bar', 'exp' => strtotime('+10 seconds'));
+        $payload = ['sub' => 'bar', 'exp' => strtotime('+10 seconds')];
         $msg = JWT::encode($payload, $privKey2, 'RS256', 'jwk2');
 
-        $result = JWT::decode($msg, self::$keys, array('RS256'));
+        $result = JWT::decode($msg, self::$keys, ['RS256']);
 
-        $this->assertEquals("bar", $result->sub);
+        $this->assertEquals('bar', $result->sub);
     }
 
     /*

@@ -1,10 +1,11 @@
 <?php
 
-namespace Firebase\JWT;
+namespace Alancting\Microsoft\JWT;
 
 use DomainException;
 use InvalidArgumentException;
 use UnexpectedValueException;
+use InvalidArgumentException;
 
 /**
  * JSON Web Key implementation, based on this spec:
@@ -44,17 +45,23 @@ class JWK
             throw new InvalidArgumentException('JWK Set did not contain any keys');
         }
 
+        // Added support for ADFS 2016 (Missing kid), including x5t into JWK
         foreach ($jwks['keys'] as $k => $v) {
             $kid = isset($v['kid']) ? $v['kid'] : $k;
+            $x5t = isset($v['x5t']) ? $v['x5t'] : $k;
+            
             if ($key = self::parseKey($v)) {
                 $keys[$kid] = $key;
+
+                if ($kid !== $x5t) {
+                    $keys[$x5t] = $key;
+                }
             }
         }
-
+        
         if (0 === \count($keys)) {
             throw new UnexpectedValueException('No supported algorithms found in JWK Set');
         }
-
         return $keys;
     }
 
@@ -81,25 +88,26 @@ class JWK
         }
 
         switch ($jwk['kty']) {
-            case 'RSA':
-                if (\array_key_exists('d', $jwk)) {
-                    throw new UnexpectedValueException('RSA private keys are not supported');
-                }
-                if (!isset($jwk['n']) || !isset($jwk['e'])) {
-                    throw new UnexpectedValueException('RSA keys must contain values for both "n" and "e"');
-                }
+        case 'RSA':
+            if (\array_key_exists('d', $jwk)) {
+                throw new UnexpectedValueException('RSA private keys are not supported');
+            }
+            if (!isset($jwk['n']) || !isset($jwk['e'])) {
+                throw new UnexpectedValueException('RSA keys must contain values for both "n" and "e"');
+            }
 
-                $pem = self::createPemFromModulusAndExponent($jwk['n'], $jwk['e']);
-                $publicKey = \openssl_pkey_get_public($pem);
-                if (false === $publicKey) {
-                    throw new DomainException(
-                        'OpenSSL error: ' . \openssl_error_string()
-                    );
-                }
-                return $publicKey;
-            default:
-                // Currently only RSA is supported
-                break;
+            $pem = self::createPemFromModulusAndExponent($jwk['n'], $jwk['e']);
+            $publicKey = \openssl_pkey_get_public($pem);
+            
+            if (false === $publicKey) {
+                throw new DomainException(
+                    'OpenSSL error: ' . \openssl_error_string()
+                );
+            }
+            return $publicKey;
+        default:
+            // Currently only RSA is supported
+            break;
         }
     }
 
@@ -146,7 +154,7 @@ class JWK
         $rsaPublicKey = "-----BEGIN PUBLIC KEY-----\r\n" .
             \chunk_split(\base64_encode($rsaPublicKey), 64) .
             '-----END PUBLIC KEY-----';
-
+            
         return $rsaPublicKey;
     }
 
@@ -156,7 +164,7 @@ class JWK
      * DER supports lengths up to (2**8)**127, however, we'll only support lengths up to (2**8)**4.  See
      * {@link http://itu.int/ITU-T/studygroups/com17/languages/X.690-0207.pdf#p=13 X.690 paragraph 8.1.3} for more information.
      *
-     * @param int $length
+     * @param  int $length
      * @return string
      */
     private static function encodeLength($length)

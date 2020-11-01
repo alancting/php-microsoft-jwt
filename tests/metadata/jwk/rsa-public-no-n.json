@@ -1,0 +1,7 @@
+{
+  "kty": "RSA",
+  "e": "AQAB",
+  "use": "sig",
+  "kid": "2lEZNsDIjsBPH94_b7-1z1IvnybfzOIz0hsBamzxCWc",
+  "alg": "RS256"
+}

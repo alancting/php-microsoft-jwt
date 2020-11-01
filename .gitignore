@@ -3,3 +3,10 @@ phpunit.phar
 phpunit.phar.asc
 composer.phar
 composer.lock
+
+coverage
+coverage/*
+
+build
+
+.coveralls.yml
