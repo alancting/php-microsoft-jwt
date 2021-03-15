@@ -45,8 +45,8 @@
     }
   },
   "scripts": {
-    "test": ["./vendor/bin/phpunit --colors=always"],
-    "coverage": ["./vendor/bin/phpunit --colors=always --coverage-text --coverage-html ./coverage --coverage-clover=build/logs/clover.xml"],
-    "coveralls": ["composer run coverage && ./vendor/bin/php-coveralls"]
+    "test": [ "@putenv XDEBUG_MODE=coverage", "./vendor/bin/phpunit --colors=always" ],
+    "coverage": [ "@putenv XDEBUG_MODE=coverage", "./vendor/bin/phpunit --colors=always --coverage-text --coverage-html ./coverage --coverage-clover=build/logs/clover.xml" ],
+    "coveralls": [ "@putenv XDEBUG_MODE=coverage", "composer run coverage && ./vendor/bin/php-coveralls"]
   }
 }

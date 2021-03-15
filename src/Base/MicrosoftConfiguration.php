@@ -161,6 +161,13 @@ abstract class MicrosoftConfiguration
         $targetUri = $value;
         if (filter_var($value, FILTER_VALIDATE_URL) === false) {
             $targetUri = realpath($value) === false ? __DIR__ . $value : $value;
+            $result = @file_get_contents($targetUri);
+        } else {
+            $ch = curl_init($value);
+            curl_setopt($ch, CURLOPT_HTTPGET, true);
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            $result = curl_exec($ch);
+            curl_close($ch);
         }
 
         $result = @file_get_contents($targetUri);
