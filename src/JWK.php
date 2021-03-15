@@ -5,6 +5,7 @@ namespace Alancting\Microsoft\JWT;
 use DomainException;
 use InvalidArgumentException;
 use UnexpectedValueException;
+use InvalidArgumentException;
 
 /**
  * JSON Web Key implementation, based on this spec:
