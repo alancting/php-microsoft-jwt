@@ -412,11 +412,7 @@ class AdfsConfigurationTest extends MockeryTestCase
                 $mock_cache
                     ->shouldNotReceive('save')
                     ->with($mock_cach_item_jwks);
-            } else {
-                $mock_cache
-                    ->shouldNotReceive('save')
-                    ->with($mock_cach_item_jwks_error);
-                    
+            } else { 
                 $mock_cache
                     ->shouldReceive('save')
                     ->with($mock_cach_item_jwks)
