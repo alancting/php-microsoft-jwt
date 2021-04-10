@@ -2,19 +2,13 @@
 
 namespace Alancting\Microsoft\Tests\AzureAd;
 
-// use PHPUnit\Framework\TestCase;
+use Mockery\Adapter\Phpunit\MockeryTestCase;
+use \Mockery;
 
 use Symfony\Component\Cache\CacheItem;
-use Symfony\Component\Cache\ItemInterface;
-use Symfony\Component\Cache\Adapter\FilesystemAdapter;
-use Symfony\Component\Cache\Adapter\RedisAdapter;
-use Symfony\Component\Cache\Adapter\MemcachedAdapter;
 
 use Alancting\Microsoft\JWT\Base\MicrosoftConfiguration;
 use Alancting\Microsoft\JWT\AzureAd\AzureAdConfiguration;
-use Mockery\Adapter\Phpunit\MockeryTestCase;
-
-use \Mockery;
 
 class AzureAdConfigurationTest extends MockeryTestCase
 {
@@ -191,7 +185,7 @@ class AzureAdConfigurationTest extends MockeryTestCase
         $this->commonConstructorAssert($config);
     }
 
-    public function testConstructorWithCacheFile()
+    public function testConstructorWithFileCacheNotExists()
     {
         \DG\BypassFinals::enable();
         
@@ -199,57 +193,156 @@ class AzureAdConfigurationTest extends MockeryTestCase
             'type' => 'file',
             'path' => 'any_file_path'
         ];
-        
-        $mock_cache_item_config = Mockery::mock(CacheItem::class);
-        $mock_cache_item_config
-            ->shouldReceive('isHit')
-            ->andReturn(false);
-        
-        $mock_cache_item_config
-            ->shouldReceive('set')
-            ->andReturn($mock_cache_item_config);
 
-        $mock_cache_item_config
-            ->shouldReceive('get')
-            ->andReturn(file_get_contents(($this->default_configs)['config_uri']));
+        $this->mockCacheConfig(
+            'FilesystemAdapter', 
+            false, 
+            false);
         
-        $mock_cache_config = Mockery::mock('overload:Symfony\Component\Cache\Adapter\FilesystemAdapter');
-        $mock_cache_config
-            ->shouldReceive('getItem')
-            ->with(MicrosoftConfiguration::CACHE_KEY_CONFIGS)
-            ->andReturn($mock_cache_item_config);
-        
-        $mock_cache_config
-            ->shouldReceive('save')
-            ->andReturn($mock_cache_item_config);
-
-        $mock_cache_item_jwk = Mockery::mock(CacheItem::class);
-        $mock_cache_item_jwk
-            ->shouldReceive('isHit')
-            ->andReturn(false);
-            
-        $mock_cache_item_jwk
-            ->shouldReceive('set')
-            ->andReturn($mock_cache_item_jwk);
-    
-        $mock_cache_item_jwk
-            ->shouldReceive('get')
-            ->andReturn(file_get_contents(__DIR__.'/../../tests/metadata/azure_ad/configuration/jwks_uri.json'));
-            
-        $mock_cache_config
-            ->shouldReceive('getItem')
-            ->with(MicrosoftConfiguration::CACHE_KEY_JWKS)
-            ->andReturn($mock_cache_item_jwk);
-            
-        $mock_cache_config
-            ->shouldReceive('save')
-            ->andReturn($mock_cache_item_jwk);
-                
         $config = new AzureAdConfiguration($this->default_configs);
-
-        print_r($config->getLoadStatus());
         $this->commonConstructorAssert($config);
+    }
 
+    public function testConstructorWithFileCacheExists()
+    {
+        \DG\BypassFinals::enable();
+        
+        ($this->default_configs)['cache'] = [
+            'type' => 'file',
+            'path' => 'any_file_path'
+        ];
+
+        $this->mockCacheConfig(
+            'FilesystemAdapter', 
+            true, 
+            false);
+        
+        $config = new AzureAdConfiguration($this->default_configs);
+        $this->commonConstructorAssert($config);
+    }
+
+    public function testConstructorWithFileCacheExistsWithError()
+    {
+        \DG\BypassFinals::enable();
+        
+        ($this->default_configs)['cache'] = [
+            'type' => 'file',
+            'path' => 'any_file_path'
+        ];
+
+        $this->mockCacheConfig(
+            'FilesystemAdapter', 
+            true, 
+            true);
+        
+        $config = new AzureAdConfiguration($this->default_configs);
+        $this->commonConstructorAssert($config);
+    }
+
+    public function testConstructorWithRedisCacheNotExists()
+    {
+        \DG\BypassFinals::enable();
+       
+        ($this->default_configs)['cache'] = [
+            'type' => 'redis',
+            'client' => $this->createStub(\Redis::class)
+        ];
+
+        $this->mockCacheConfig(
+            'RedisAdapter', 
+            false, 
+            false);
+        
+        $config = new AzureAdConfiguration($this->default_configs);
+        $this->commonConstructorAssert($config);
+    }
+
+    public function testConstructorWithRedisCacheExists()
+    {
+        \DG\BypassFinals::enable();
+        
+        ($this->default_configs)['cache'] = [
+            'type' => 'redis',
+            'client' => $this->createStub(\Redis::class)
+        ];
+
+        $this->mockCacheConfig(
+            'RedisAdapter', 
+            true, 
+            false);
+        
+        $config = new AzureAdConfiguration($this->default_configs);
+        $this->commonConstructorAssert($config);
+    }
+
+    public function testConstructorWithRedisCacheExistsWithError()
+    {
+        \DG\BypassFinals::enable();
+        
+        ($this->default_configs)['cache'] = [
+            'type' => 'redis',
+            'client' => $this->createStub(\Redis::class)
+        ];
+
+        $this->mockCacheConfig(
+            'RedisAdapter', 
+            true, 
+            true);
+        
+        $config = new AzureAdConfiguration($this->default_configs);
+        $this->commonConstructorAssert($config);
+    }
+
+    public function testConstructorWithMemcachedCacheNotExists()
+    {
+        \DG\BypassFinals::enable();
+       
+        ($this->default_configs)['cache'] = [
+            'type' => 'memcache',
+            'client' => $this->createStub(\Memcached::class)
+        ];
+
+        $this->mockCacheConfig(
+            'MemcachedAdapter', 
+            false, 
+            false);
+        
+        $config = new AzureAdConfiguration($this->default_configs);
+        $this->commonConstructorAssert($config);
+    }
+
+    public function testConstructorWithMemcachedCacheExists()
+    {
+        \DG\BypassFinals::enable();
+        
+        ($this->default_configs)['cache'] = [
+            'type' => 'memcache',
+            'client' => $this->createStub(\Memcached::class)
+        ];
+
+        $this->mockCacheConfig(
+            'MemcachedAdapter', 
+            true, 
+            false);
+        
+        $config = new AzureAdConfiguration($this->default_configs);
+        $this->commonConstructorAssert($config);
+    }
+
+    public function testConstructorWithMemcachedCacheExistsWithError()
+    {
+        \DG\BypassFinals::enable();
+        
+        ($this->default_configs)['cache'] = [
+            'type' => 'memcache',
+            'client' => $this->createStub(\Memcached::class)
+        ];
+
+        $this->mockCacheConfig(
+            'MemcachedAdapter', 
+            true, 
+            true);
+        
         $config = new AzureAdConfiguration($this->default_configs);
         $this->commonConstructorAssert($config);
     }
@@ -292,8 +385,96 @@ class AzureAdConfigurationTest extends MockeryTestCase
         $this->assertEquals($config->getEndSessionEndpoint(), 'https://login.microsoftonline.com/iv9puejd-qmJ1-AL2i-j3TP-wrb7qjjvxttz/oauth2/v2.0/logout');
     }
 
-    private function mockCacheConfig()
+    private function mockCacheConfig($cache_class, $is_hit, $error = false)
     {
+        $mock_cach_item_configs = $this->getMockCachItem(
+            $is_hit, 
+            file_get_contents(($this->default_configs)['config_uri']));
+        if (!$error) {
+            $mock_cach_item_jwks = $this->getMockCachItem(
+                $is_hit, 
+                file_get_contents(__DIR__.'/../../tests/metadata/azure_ad/configuration/jwks_uri.json'));
+        } else {
+            $mock_cach_item_jwks = $this->getMockCachItem(
+                $is_hit, 
+                file_get_contents(__DIR__.'/../../tests/metadata/azure_ad/configuration/jwks_uri.json'),
+                file_get_contents(($this->default_configs)['config_uri']));
+        }
         
+        $mock_cache = Mockery::mock(sprintf('overload:Symfony\Component\Cache\Adapter\%s', $cache_class));
+        
+        $mock_cache
+            ->shouldReceive('getItem')
+            ->with(MicrosoftConfiguration::CACHE_KEY_CONFIGS)
+            ->andReturn($mock_cach_item_configs);
+        if ($is_hit) {
+            $mock_cache
+                ->shouldNotReceive('save')
+                ->with($mock_cach_item_configs);
+        } else {
+            $mock_cache
+                ->shouldReceive('save')
+                ->with($mock_cach_item_configs)
+                ->andReturn($mock_cach_item_configs);
+        }
+
+        $mock_cache
+            ->shouldReceive('getItem')
+            ->with(MicrosoftConfiguration::CACHE_KEY_JWKS)
+            ->andReturn($mock_cach_item_jwks);
+        
+        if ($is_hit) {
+            if (!$error) {
+                $mock_cache
+                    ->shouldNotReceive('save')
+                    ->with($mock_cach_item_jwks);
+            } else {
+                $mock_cache
+                    ->shouldNotReceive('save')
+                    ->with($mock_cach_item_jwks_error);
+                    
+                $mock_cache
+                    ->shouldReceive('save')
+                    ->with($mock_cach_item_jwks)
+                    ->andReturn($mock_cach_item_jwks);
+            }
+        } else {
+            $mock_cache
+                ->shouldReceive('save')
+                ->with($mock_cach_item_jwks)
+                ->andReturn($mock_cach_item_jwks);
+        }
+            
+        return $mock_cache;
+    }
+
+    private function getMockCachItem($is_hit, $cached_result, $cached_error_result = false)
+    {
+        $mock_cach_item = Mockery::mock(CacheItem::class);
+        $mock_cach_item
+            ->shouldReceive('isHit')
+            ->andReturn($is_hit);
+        
+        if ($is_hit && !$cached_error_result) {
+            $mock_cach_item
+                ->shouldNotReceive('set')
+                ->andReturn($mock_cach_item);
+        } else {
+            $mock_cach_item
+                ->shouldReceive('set')
+                ->andReturn($mock_cach_item);
+        }
+        
+        if (!$cached_error_result)
+        {
+            $mock_cach_item
+                ->shouldReceive('get')
+                ->andReturn($cached_result);
+        } else {
+            $mock_cach_item
+                ->shouldReceive('get')
+                ->andReturn($cached_error_result, $cached_result);
+        }
+        return $mock_cach_item;
     }
 }

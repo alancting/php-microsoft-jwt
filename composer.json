@@ -32,10 +32,10 @@
     "symfony/cache": "^4.4"
   },
   "require-dev": {
-    "phpunit/phpunit": ">=4.8 <=9",
     "php-coveralls/php-coveralls": "^2.3",
     "dg/bypass-finals": "^1.3",
-    "mockery/mockery": "^1.3"
+    "mockery/mockery": "^1.3",
+    "phpunit/phpunit": "^9.5"
   },
   "autoload": {
     "psr-4": {
