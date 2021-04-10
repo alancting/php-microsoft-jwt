@@ -33,12 +33,12 @@ use Alancting\Microsoft\JWT\Adfs\AdfsIdTokenJWT;
 ...
 
 /**
- * AdfsConfiguration class will go to https://{you_asfs_hostname}/adfs/.well-known/openid-configuration to parse the configuration for your application
+ * AdfsConfiguration class will go to https://{your_asfs_hostname}/adfs/.well-known/openid-configuration to parse the configuration for your application
  *
  */
 $config_options = [
   'client_id' => '{client_id}',
-  'hostname' => '{you_asfs_hostname}',
+  'hostname' => '{your_asfs_hostname}',
 ];
 
 /**
@@ -159,6 +159,138 @@ echo "\n";
  */
 echo ($id_token_jwt->isExpired()) ? 'Id token is expired' : 'Id token is valid';
 echo ($id_token->isExpired()) ? 'Access token is expired' : 'Access token is valid';
+```
+
+### Cache support
+
+We provide a option to cache the open id configuration in order to reduce the network traffic. You can use one of these cache options:
+
+- File
+- Redis
+- Memcached
+
+### ADFS
+
+#### File
+
+```php
+$config_options = [
+  'client_id' => '{client_id}',
+  'hostname' => '{your_asfs_hostname}',
+  'cache' => [
+    'type' => 'file',
+    'path' => '{cache_file_path}'
+  ]
+];
+$config = new AdfsConfiguration($config_options);
+```
+
+#### Redis
+
+Client expects a [Redis](https://github.com/phpredis/phpredis) or [Predis](https://packagist.org/packages/predis/predis) instance
+
+```php
+$redis_client = new \Redis();
+$redis_client->pconnect('redis', 6379);
+
+$predis_client = new \Predis\Client([
+  'scheme' => 'tcp',
+  'host'   => 'redis',
+  'port'   => 6379,
+]);
+
+$config_options = [
+  'client_id' => '{client_id}',
+  'hostname' => '{your_asfs_hostname}',
+  'cache' => [
+    'type' => 'redis',
+    'client' => $redis_client // or $predis_client
+  ]
+];
+$config = new AdfsConfiguration($config_options);
+```
+
+#### Memcached
+
+Client expects a [Memcached](https://www.php.net/manual/en/class.memcached.php) instance
+
+```php
+$memcached_client = new \Memcached();
+$memcached_client->addServer('memcached', 11211);
+
+$config_options = [
+  'client_id' => '{client_id}',
+  'hostname' => '{your_asfs_hostname}',
+  'cache' => [
+    'type' => 'memcache',
+    'client' => $memcached_client
+  ]
+];
+$config = new AdfsConfiguration($config_options);
+```
+
+### Azure Ad
+
+#### File
+
+```php
+$config_options = [
+  'tenant' => '{tenant_id} | common | organizations | consumers',
+  'tenant_id' => '{tenant_id}',
+  'client_id' => '{client_id}',
+  'cache' => [
+    'type' => 'file',
+    'path' => '{cache_file_path}'
+  ]
+];
+
+$config = new AzureAdConfiguration($config_options);
+```
+
+#### Redis
+
+Client expects a [Redis](https://github.com/phpredis/phpredis) or [Predis](https://packagist.org/packages/predis/predis) instance
+
+```php
+$redis_client = new \Redis();
+$redis_client->pconnect('redis', 6379);
+
+$predis_client = new \Predis\Client([
+  'scheme' => 'tcp',
+  'host'   => 'redis',
+  'port'   => 6379,
+]);
+
+$config_options = [
+  'tenant' => '{tenant_id} | common | organizations | consumers',
+  'tenant_id' => '{tenant_id}',
+  'client_id' => '{client_id}',
+  'cache' => [
+    'type' => 'redis',
+    'client' => $redis_client // or $predis_client
+  ]
+];
+$config = new AzureAdConfiguration($config_options);
+```
+
+#### Memcached
+
+Client expects a [Memcached](https://www.php.net/manual/en/class.memcached.php) instance
+
+```php
+$memcached_client = new \Memcached();
+$memcached_client->addServer('memcached', 11211);
+
+$config_options = [
+  'tenant' => '{tenant_id} | common | organizations | consumers',
+  'tenant_id' => '{tenant_id}',
+  'client_id' => '{client_id}',
+  'cache' => [
+    'type' => 'memcache',
+    'client' => $memcached_client
+  ]
+];
+$config = new AzureAdConfiguration($config_options);
 ```
 
 ## Tests
