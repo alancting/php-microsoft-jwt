@@ -3,11 +3,22 @@
 namespace Alancting\Microsoft\JWT\Base;
 
 use Alancting\Microsoft\JWT\JWK;
+use Symfony\Component\Cache\Adapter\FilesystemAdapter;
+use Symfony\Component\Cache\Adapter\RedisAdapter;
+use Symfony\Component\Cache\Adapter\MemcachedAdapter;
+
 use \UnexpectedValueException;
+use \InvalidArgumentException;
 
 abstract class MicrosoftConfiguration
 {
     abstract protected function getDefaultSigningAlgValues();
+
+    const CACHE_KEY_CONFIGS = 'microsoft_jwt.configs_json';
+    const CACHE_KEY_JWKS = 'microsoft_jwt.jwks_json';
+
+    const CACHE_NAMESPACE = 'microsoft';
+    const CACHE_LIFETIME = 0;
 
     private $options;
     private $config_uri;
@@ -33,6 +44,8 @@ abstract class MicrosoftConfiguration
     private $loaded;
     private $load_error;
 
+    private $cache = false;
+
     public function __construct($options = [])
     {
         if (!isset($options['config_uri'])) {
@@ -41,6 +54,53 @@ abstract class MicrosoftConfiguration
 
         if (!isset($options['client_id'])) {
             throw new UnexpectedValueException('Missing client_id');
+        }
+
+        if (isset($options['cache'])) {
+            if (!is_array($options['cache'])) {
+                throw new UnexpectedValueException('Invalid cache configuration');
+            }
+
+            if (!array_key_exists('type', $options['cache'])) {
+                throw new UnexpectedValueException('Invalid cache configuration');
+            }
+            
+            if (!in_array($options['cache']['type'], ['file', 'redis', 'memcache'])) {
+                throw new UnexpectedValueException('Invalid cache type');
+            }
+
+            if ($options['cache']['type'] === 'file') {
+                if (!array_key_exists('path', $options['cache'])) {
+                    throw new UnexpectedValueException('Missing file path');
+                }
+                
+                $directory = $options['cache']['path'];
+                $this->cache = new FilesystemAdapter(self::CACHE_NAMESPACE, self::CACHE_LIFETIME, $directory);
+            }
+
+            if ($options['cache']['type'] === 'redis') {
+                if (!array_key_exists('client', $options['cache'])) {
+                    throw new UnexpectedValueException('Missing Redis client');
+                }
+
+                if (!is_a($options['cache']['client'], 'Redis') && !is_a($options['cache']['client'], 'Predis\Client')) {
+                    throw new UnexpectedValueException('Invalid Redis client, must be Redis or Predis');
+                }
+
+                $this->cache = new RedisAdapter($options['cache']['client'], self::CACHE_NAMESPACE, self::CACHE_LIFETIME);
+            }
+            
+            if ($options['cache']['type'] === 'memcache') {
+                if (!array_key_exists('client', $options['cache'])) {
+                    throw new UnexpectedValueException('Missing Memcached client');
+                }
+
+                if (!is_a($options['cache']['client'], 'Memcached')) {
+                    throw new UnexpectedValueException('Invalid Memcached client');
+                }
+
+                $this->cache = new MemcachedAdapter($options['cache']['client'], self::CACHE_NAMESPACE, self::CACHE_LIFETIME);
+            }
         }
 
         $this->config_uri = $options['config_uri'];
@@ -130,10 +190,18 @@ abstract class MicrosoftConfiguration
     {
         try {
             $this->loaded = false;
-
-            $json = $this->getFromUrlOrFile($this->config_uri);
+            
+            if ($this->cache !== false) {
+                $cache_item_configs = $this->cache->getItem(self::CACHE_KEY_CONFIGS);
+                if (!$cache_item_configs->isHit()) {
+                    $cache_item_configs = $this->setCacheFromUrlOrFile(self::CACHE_KEY_CONFIGS, $this->config_uri);
+                }
+                $json = $cache_item_configs->get();
+            } else {
+                $json = $this->getFromUrlOrFile($this->config_uri);
+            }
             $data = json_decode($json, true);
-
+            
             $this->authorization_endpoint = $data['authorization_endpoint'];
             $this->token_endpoint = $data['token_endpoint'];
             $this->userinfo_endpoint = $data['userinfo_endpoint'];
@@ -144,11 +212,23 @@ abstract class MicrosoftConfiguration
             $this->access_token_issuer = (isset($data['access_token_issuer'])) ? $data['access_token_issuer'] : $this->issuer;
             $this->id_token_signing_alg_values_supported = isset($data['id_token_signing_alg_values_supported']) ? $data['id_token_signing_alg_values_supported'] : $this->getDefaultSigningAlgValues();
             $this->token_endpoint_auth_signing_alg_values_supported = isset($data['token_endpoint_auth_signing_alg_values_supported']) ? $data['token_endpoint_auth_signing_alg_values_supported'] : $this->getDefaultSigningAlgValues();
-
-            $jwks_json = $this->getFromUrlOrFile($this->jwks_uri);
-            $jwks_data = json_decode($jwks_json, true);
-
-            $this->jwks = JWK::parseKeySet($jwks_data);
+            
+            if ($this->cache !== false) {
+                $cache_item_jwks = $this->cache->getItem(self::CACHE_KEY_JWKS);
+                if (!$cache_item_jwks->isHit()) {
+                    $cache_item_jwks = $this->setCacheFromUrlOrFile(self::CACHE_KEY_JWKS, $this->jwks_uri);
+                } else {
+                    try {
+                        $this->jwks = $this->getJwkFromJson($cache_item_jwks->get());
+                    } catch (\Exception $e) {
+                        $cache_item_jwks = $this->setCacheFromUrlOrFile(self::CACHE_KEY_JWKS, $this->jwks_uri);
+                    }
+                }
+                $this->jwks = $this->getJwkFromJson($cache_item_jwks->get());
+            } else {
+                $jwks_json = $this->getFromUrlOrFile($this->jwks_uri);
+                $this->jwks = $this->getJwkFromJson($jwks_json);
+            }
 
             $this->loaded = true;
         } catch (\Exception $e) {
@@ -156,14 +236,14 @@ abstract class MicrosoftConfiguration
         }
     }
 
-    private function getFromUrlOrFile($value)
+    private function getFromUrlOrFile($uri)
     {
-        $targetUri = $value;
-        if (filter_var($value, FILTER_VALIDATE_URL) === false) {
-            $targetUri = realpath($value) === false ? __DIR__ . $value : $value;
+        $targetUri = $uri;
+        if (filter_var($uri, FILTER_VALIDATE_URL) === false) {
+            $targetUri = realpath($uri) === false ? __DIR__ . $uri : $uri;
             $result = @file_get_contents($targetUri);
         } else {
-            $ch = curl_init($value);
+            $ch = curl_init($uri);
             curl_setopt($ch, CURLOPT_HTTPGET, true);
             curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
             $result = curl_exec($ch);
@@ -175,5 +255,19 @@ abstract class MicrosoftConfiguration
         }
 
         return $result;
+    }
+
+    private function setCacheFromUrlOrFile($key, $uri) {
+        $cache_item = $this->cache->getItem($key);
+        $data = $this->getFromUrlOrFile($uri);
+        $cache_item->set($data);
+        $this->cache->save($cache_item);
+
+        return $cache_item;
+    }
+
+    private function getJwkFromJson($json) {
+        $data = json_decode($json, true);
+        return JWK::parseKeySet($data);
     }
 }

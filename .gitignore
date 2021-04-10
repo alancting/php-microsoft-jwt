@@ -1,6 +1,8 @@
 vendor
 phpunit.phar
 phpunit.phar.asc
+.phpunit.result.cache
+
 composer.phar
 composer.lock
 
@@ -10,3 +12,4 @@ coverage/*
 build
 
 .coveralls.yml
+

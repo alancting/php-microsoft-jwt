@@ -7,6 +7,17 @@ use Alancting\Microsoft\JWT\Adfs\AdfsConfiguration;
 
 class AdfsConfigurationTest extends TestCase
 {
+    private $default_configs;
+
+    protected function setUp(): void
+    {
+        $this->default_configs = [
+            'hostname' => 'some_hostname.com',
+            'client_id' => 'client-id',
+            'config_uri' => __DIR__ . '/../metadata/adfs/configuration/configuration.json',
+        ];
+    }
+    
     public function testMissingHostNameAndConfigUriOptions()
     {
         $this->setExpectedException(
@@ -14,7 +25,7 @@ class AdfsConfigurationTest extends TestCase
             'Missing hostname'
         );
 
-        $config = new AdfsConfiguration([]);
+        new AdfsConfiguration([]);
     }
 
     public function testMissingConfigUriOptions()
@@ -24,11 +35,8 @@ class AdfsConfigurationTest extends TestCase
             'Missing config_uri'
         );
 
-        $config = new AdfsConfiguration(
-            [
-                'hostname' => 'some_hostname.com',
-            ]
-        );
+        unset(($this->default_configs)['client_id'], ($this->default_configs)['config_uri']);
+        new AdfsConfiguration($this->default_configs);
     }
 
     public function testMissingCliendIdOptions()
@@ -38,46 +46,29 @@ class AdfsConfigurationTest extends TestCase
             'Missing client_id'
         );
 
-        $config = new AdfsConfiguration(
-            [
-                'hostname' => 'some_hostname.com',
-                'config_uri' => __DIR__ . '/../metadata/adfs/configuration/configuration.json',
-            ]
-        );
+        unset(($this->default_configs)['client_id']);
+        new AdfsConfiguration($this->default_configs);
     }
 
     public function testIfHostnameGivenOptions()
     {
-        $config = new AdfsConfiguration(
-            [
-                'hostname' => 'some_hostname.com',
-                'client_id' => 'client-id',
-            ]
-        );
+        unset(($this->default_configs)['config_uri']);
+        $config = new AdfsConfiguration($this->default_configs);
 
         $this->assertEquals($config->getConfigUri(), 'https://some_hostname.com/adfs/.well-known/openid-configuration');
     }
 
     public function testIfConfigUrisGivenOptions()
     {
-        $config = new AdfsConfiguration(
-            [
-                'client_id' => 'client-id',
-                'config_uri' => __DIR__ . '/../metadata/adfs/configuration/configuration.json',
-            ]
-        );
+        $config = new AdfsConfiguration($this->default_configs);
 
         $this->assertEquals($config->getConfigUri(), __DIR__ . '/../metadata/adfs/configuration/configuration.json');
     }
 
-    public function testInvalodConfigUri()
+    public function testInvalidConfigUri()
     {
-        $config = new AdfsConfiguration(
-            [
-                'client_id' => 'client-id',
-                'config_uri' => 'http://127.0.0.1/not_exists',
-            ]
-        );
+        ($this->default_configs)['config_uri'] = 'http://127.0.0.1/not_exists';
+        $config = new AdfsConfiguration($this->default_configs);
 
         $this->assertEquals($config->getLoadStatus(), [
             'status' => false,
@@ -85,15 +76,117 @@ class AdfsConfigurationTest extends TestCase
         ]);
     }
 
-    public function testConstructor()
+    public function testInvalidCacheOptions() 
     {
-        $config = new AdfsConfiguration(
-            [
-                'client_id' => 'client-id',
-                'config_uri' => __DIR__ . '/../metadata/adfs/configuration/configuration.json',
-            ]
+        $this->setExpectedException(
+            'UnexpectedValueException',
+            'Invalid cache configuration'
+        );
+        
+        ($this->default_configs)['cache'] = '';
+        new AdfsConfiguration($this->default_configs);
+    }
+
+    public function testMissingCacheOptionsKey() 
+    {
+        $this->setExpectedException(
+            'UnexpectedValueException',
+            'Invalid cache configuration'
+        );
+        
+        ($this->default_configs)['cache'] = [];
+        new AdfsConfiguration($this->default_configs);
+    }
+    
+    public function testInvalidCacheType() 
+    {
+        $this->setExpectedException(
+            'UnexpectedValueException',
+            'Invalid cache type'
         );
 
+        ($this->default_configs)['cache']['type'] = 'any_random_type';
+        new AdfsConfiguration($this->default_configs);
+    }
+    
+    public function testMissingCacheTypeFilePath() 
+    {
+        $this->setExpectedException(
+            'UnexpectedValueException',
+            'Missing file path'
+        );
+
+        ($this->default_configs)['cache']['type'] = 'file';
+        new AdfsConfiguration($this->default_configs);
+    }
+    
+    public function testMissingCacheTypeRedisClient() 
+    {
+        $this->setExpectedException(
+            'UnexpectedValueException',
+            'Missing Redis client'
+        );
+
+        ($this->default_configs)['cache']['type'] = 'redis';
+        new AdfsConfiguration($this->default_configs);
+    }
+
+    public function testInvalidCacheTypeRedisClient() 
+    {
+        $this->setExpectedException(
+            'UnexpectedValueException',
+            'Invalid Redis client, must be Redis or Predis'
+        );
+        
+        ($this->default_configs)['cache'] = [
+            'type' => 'redis',
+            'client' => new \stdClass 
+        ];
+        new AdfsConfiguration($this->default_configs);
+    }
+
+    public function testMissingCacheTypeMemcacheClient() 
+    {
+        $this->setExpectedException(
+            'UnexpectedValueException',
+            'Missing Memcached client'
+        );
+        
+        ($this->default_configs)['cache']['type'] = 'memcache';
+        new AdfsConfiguration($this->default_configs);
+    }
+
+    public function testInvalidCacheTypeMemcacheClient() 
+    {
+        $this->setExpectedException(
+            'UnexpectedValueException',
+            'Invalid Memcached client'
+        );
+        
+        ($this->default_configs)['cache'] = [
+            'type' => 'memcache',
+            'client' => new \stdClass 
+        ];
+        new AdfsConfiguration($this->default_configs);
+    }
+    
+    public function testConstructor()
+    {
+        $config = new AdfsConfiguration($this->default_configs);
+        $this->commonConstructorAssert($config);
+    }
+
+    private function setExpectedException($exceptionName, $message = '', $code = null)
+    {
+        if (method_exists($this, 'expectException')) {
+            $this->expectException($exceptionName);
+        } else {
+            parent::setExpectedException($exceptionName, $message, $code);
+        }
+    }
+
+    private function commonConstructorAssert($config) 
+    {
         $this->assertEquals($config->getLoadStatus(), [
             'status' => true,
         ]);
@@ -113,14 +206,5 @@ class AdfsConfigurationTest extends TestCase
         $this->assertEquals($config->getUserInfoEndpoint(), 'https://your_domain/adfs/userinfo');
         $this->assertEquals($config->getDeviceAuthEndpoint(), 'https://your_domain/adfs/oauth2/devicecode');
         $this->assertEquals($config->getEndSessionEndpoint(), 'https://your_domain/adfs/oauth2/logout');
-    }
-
-    private function setExpectedException($exceptionName, $message = '', $code = null)
-    {
-        if (method_exists($this, 'expectException')) {
-            $this->expectException($exceptionName);
-        } else {
-            parent::setExpectedException($exceptionName, $message, $code);
-        }
     }
 }
