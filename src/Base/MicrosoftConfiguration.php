@@ -195,23 +195,18 @@ abstract class MicrosoftConfiguration
                 $cache_item_configs = $this->cache->getItem(self::CACHE_KEY_CONFIGS);
                 if (!$cache_item_configs->isHit()) {
                     $cache_item_configs = $this->setCacheFromUrlOrFile(self::CACHE_KEY_CONFIGS, $this->config_uri);
+                } else {
+                    try {
+                        $this->parseOpenIdConfigsFromJson($cache_item_configs->get());
+                    } catch (\Exception $e) {
+                        $cache_item_configs = $this->setCacheFromUrlOrFile(self::CACHE_KEY_CONFIGS, $this->config_uri);
+                    }
                 }
-                $json = $cache_item_configs->get();
+                $this->parseOpenIdConfigsFromJson($cache_item_configs->get());
             } else {
-                $json = $this->getFromUrlOrFile($this->config_uri);
+                $configs_json = $this->getFromUrlOrFile($this->config_uri);
+                $this->parseOpenIdConfigsFromJson($configs_json);
             }
-            $data = json_decode($json, true);
-            
-            $this->authorization_endpoint = $data['authorization_endpoint'];
-            $this->token_endpoint = $data['token_endpoint'];
-            $this->userinfo_endpoint = $data['userinfo_endpoint'];
-            $this->device_authorization_endpoint = $data['device_authorization_endpoint'];
-            $this->end_session_endpoint = $data['end_session_endpoint'];
-            $this->jwks_uri = $data['jwks_uri'];
-            $this->issuer = $data['issuer'];
-            $this->access_token_issuer = (isset($data['access_token_issuer'])) ? $data['access_token_issuer'] : $this->issuer;
-            $this->id_token_signing_alg_values_supported = isset($data['id_token_signing_alg_values_supported']) ? $data['id_token_signing_alg_values_supported'] : $this->getDefaultSigningAlgValues();
-            $this->token_endpoint_auth_signing_alg_values_supported = isset($data['token_endpoint_auth_signing_alg_values_supported']) ? $data['token_endpoint_auth_signing_alg_values_supported'] : $this->getDefaultSigningAlgValues();
             
             if ($this->cache !== false) {
                 $cache_item_jwks = $this->cache->getItem(self::CACHE_KEY_JWKS);
@@ -234,6 +229,35 @@ abstract class MicrosoftConfiguration
         } catch (\Exception $e) {
             $this->load_error = $e->getMessage();
         }
+    }
+
+    private function parseOpenIdConfigsFromJson($config_json) 
+    {   
+        
+        try {
+            $data = json_decode($config_json, true);
+            if (!array_key_exists('authorization_endpoint', $data) || 
+                !array_key_exists('token_endpoint', $data) || 
+                !array_key_exists('userinfo_endpoint', $data) || 
+                !array_key_exists('device_authorization_endpoint', $data) || 
+                !array_key_exists('end_session_endpoint', $data) || 
+                !array_key_exists('jwks_uri', $data) || 
+                !array_key_exists('issuer', $data)) {
+                throw new \Exception('Invalid configuration');
+            }
+            $this->authorization_endpoint = $data['authorization_endpoint'];
+            $this->token_endpoint = $data['token_endpoint'];
+            $this->userinfo_endpoint = $data['userinfo_endpoint'];
+            $this->device_authorization_endpoint = $data['device_authorization_endpoint'];
+            $this->end_session_endpoint = $data['end_session_endpoint'];
+            $this->jwks_uri = $data['jwks_uri'];
+            $this->issuer = $data['issuer'];
+            $this->access_token_issuer = (isset($data['access_token_issuer'])) ? $data['access_token_issuer'] : $this->issuer;
+            $this->id_token_signing_alg_values_supported = isset($data['id_token_signing_alg_values_supported']) ? $data['id_token_signing_alg_values_supported'] : $this->getDefaultSigningAlgValues();
+            $this->token_endpoint_auth_signing_alg_values_supported = isset($data['token_endpoint_auth_signing_alg_values_supported']) ? $data['token_endpoint_auth_signing_alg_values_supported'] : $this->getDefaultSigningAlgValues();
+        } catch (\Exception $e) {
+            throw new \Exception('Invalid configuration');
+        } 
     }
 
     private function getFromUrlOrFile($uri)

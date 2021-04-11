@@ -184,11 +184,7 @@ class AdfsConfigurationTest extends MockeryTestCase
             'path' => 'any_file_path'
         ];
 
-        $this->mockCacheConfig(
-            'FilesystemAdapter', 
-            false, 
-            false);
-        
+        $this->mockCacheConfig('FilesystemAdapter', false);
         $config = new AdfsConfiguration($this->default_configs);
         $this->commonConstructorAssert($config);
     }
@@ -202,16 +198,12 @@ class AdfsConfigurationTest extends MockeryTestCase
             'path' => 'any_file_path'
         ];
 
-        $this->mockCacheConfig(
-            'FilesystemAdapter', 
-            true, 
-            false);
-        
+        $this->mockCacheConfig('FilesystemAdapter', true);
         $config = new AdfsConfiguration($this->default_configs);
         $this->commonConstructorAssert($config);
     }
 
-    public function testConstructorWithFileCacheExistsWithError()
+    public function testConstructorWithFileCacheExistsWithConfigError()
     {
         \DG\BypassFinals::enable();
         
@@ -220,11 +212,21 @@ class AdfsConfigurationTest extends MockeryTestCase
             'path' => 'any_file_path'
         ];
 
-        $this->mockCacheConfig(
-            'FilesystemAdapter', 
-            true, 
-            true);
+        $this->mockCacheConfig('FilesystemAdapter', true, true, false);
+        $config = new AdfsConfiguration($this->default_configs);
+        $this->commonConstructorAssert($config);
+    }
+
+    public function testConstructorWithFileCacheExistsWithJwkError()
+    {
+        \DG\BypassFinals::enable();
         
+        ($this->default_configs)['cache'] = [
+            'type' => 'file',
+            'path' => 'any_file_path'
+        ];
+
+        $this->mockCacheConfig('FilesystemAdapter', true, false, true);
         $config = new AdfsConfiguration($this->default_configs);
         $this->commonConstructorAssert($config);
     }
@@ -238,11 +240,7 @@ class AdfsConfigurationTest extends MockeryTestCase
             'client' => $this->createStub(\Redis::class)
         ];
 
-        $this->mockCacheConfig(
-            'RedisAdapter', 
-            false, 
-            false);
-        
+        $this->mockCacheConfig('RedisAdapter', false);
         $config = new AdfsConfiguration($this->default_configs);
         $this->commonConstructorAssert($config);
     }
@@ -256,16 +254,12 @@ class AdfsConfigurationTest extends MockeryTestCase
             'client' => $this->createStub(\Redis::class)
         ];
 
-        $this->mockCacheConfig(
-            'RedisAdapter', 
-            true, 
-            false);
-        
+        $this->mockCacheConfig('RedisAdapter', true);
         $config = new AdfsConfiguration($this->default_configs);
         $this->commonConstructorAssert($config);
     }
 
-    public function testConstructorWithRedisCacheExistsWithError()
+    public function testConstructorWithRedisCacheExistsWithConfigsError()
     {
         \DG\BypassFinals::enable();
         
@@ -274,11 +268,21 @@ class AdfsConfigurationTest extends MockeryTestCase
             'client' => $this->createStub(\Redis::class)
         ];
 
-        $this->mockCacheConfig(
-            'RedisAdapter', 
-            true, 
-            true);
+        $this->mockCacheConfig('RedisAdapter', true, true, false);
+        $config = new AdfsConfiguration($this->default_configs);
+        $this->commonConstructorAssert($config);
+    }
+
+    public function testConstructorWithRedisCacheExistsWithJwkError()
+    {
+        \DG\BypassFinals::enable();
         
+        ($this->default_configs)['cache'] = [
+            'type' => 'redis',
+            'client' => $this->createStub(\Redis::class)
+        ];
+
+        $this->mockCacheConfig('RedisAdapter', true, false, true);
         $config = new AdfsConfiguration($this->default_configs);
         $this->commonConstructorAssert($config);
     }
@@ -292,11 +296,7 @@ class AdfsConfigurationTest extends MockeryTestCase
             'client' => $this->createStub(\Memcached::class)
         ];
 
-        $this->mockCacheConfig(
-            'MemcachedAdapter', 
-            false, 
-            false);
-        
+        $this->mockCacheConfig('MemcachedAdapter', false);
         $config = new AdfsConfiguration($this->default_configs);
         $this->commonConstructorAssert($config);
     }
@@ -310,16 +310,12 @@ class AdfsConfigurationTest extends MockeryTestCase
             'client' => $this->createStub(\Memcached::class)
         ];
 
-        $this->mockCacheConfig(
-            'MemcachedAdapter', 
-            true, 
-            false);
-        
+        $this->mockCacheConfig('MemcachedAdapter', true);
         $config = new AdfsConfiguration($this->default_configs);
         $this->commonConstructorAssert($config);
     }
 
-    public function testConstructorWithMemcachedCacheExistsWithError()
+    public function testConstructorWithMemcachedCacheExistsWithConfigError()
     {
         \DG\BypassFinals::enable();
         
@@ -328,11 +324,21 @@ class AdfsConfigurationTest extends MockeryTestCase
             'client' => $this->createStub(\Memcached::class)
         ];
 
-        $this->mockCacheConfig(
-            'MemcachedAdapter', 
-            true, 
-            true);
+        $this->mockCacheConfig('MemcachedAdapter', true, true, false);
+        $config = new AdfsConfiguration($this->default_configs);
+        $this->commonConstructorAssert($config);
+    }
+
+    public function testConstructorWithMemcachedCacheExistsWithJwkError()
+    {
+        \DG\BypassFinals::enable();
         
+        ($this->default_configs)['cache'] = [
+            'type' => 'memcache',
+            'client' => $this->createStub(\Memcached::class)
+        ];
+
+        $this->mockCacheConfig('MemcachedAdapter', true, false, true);
         $config = new AdfsConfiguration($this->default_configs);
         $this->commonConstructorAssert($config);
     }
@@ -369,12 +375,20 @@ class AdfsConfigurationTest extends MockeryTestCase
         $this->assertEquals($config->getEndSessionEndpoint(), 'https://your_domain/adfs/oauth2/logout');
     }
 
-    private function mockCacheConfig($cache_class, $is_hit, $error = false)
+    private function mockCacheConfig($cache_class, $is_hit, $config_error = false, $jwk_error = false)
     {
-        $mock_cach_item_configs = $this->getMockCachItem(
-            $is_hit, 
-            file_get_contents(($this->default_configs)['config_uri']));
-        if (!$error) {
+        if (!$config_error) {
+            $mock_cach_item_configs = $this->getMockCachItem(
+                $is_hit, 
+                file_get_contents(($this->default_configs)['config_uri']));
+        } else {
+            $mock_cach_item_configs = $this->getMockCachItem(
+                $is_hit, 
+                file_get_contents(($this->default_configs)['config_uri']),
+                json_encode([]));
+        }
+
+        if (!$jwk_error) {
             $mock_cach_item_jwks = $this->getMockCachItem(
                 $is_hit, 
                 file_get_contents(__DIR__.'/../../tests/metadata/azure_ad/configuration/jwks_uri.json'));
@@ -382,7 +396,7 @@ class AdfsConfigurationTest extends MockeryTestCase
             $mock_cach_item_jwks = $this->getMockCachItem(
                 $is_hit, 
                 file_get_contents(__DIR__.'/../../tests/metadata/azure_ad/configuration/jwks_uri.json'),
-                file_get_contents(($this->default_configs)['config_uri']));
+                json_encode([]));
         }
         
         $mock_cache = Mockery::mock(sprintf('overload:Symfony\Component\Cache\Adapter\%s', $cache_class));
@@ -392,9 +406,16 @@ class AdfsConfigurationTest extends MockeryTestCase
             ->with(MicrosoftConfiguration::CACHE_KEY_CONFIGS)
             ->andReturn($mock_cach_item_configs);
         if ($is_hit) {
-            $mock_cache
-                ->shouldNotReceive('save')
-                ->with($mock_cach_item_configs);
+            if (!$config_error) {
+                $mock_cache
+                    ->shouldNotReceive('save')
+                    ->with($mock_cach_item_configs);
+            } else {
+                $mock_cache
+                    ->shouldReceive('save')
+                    ->with($mock_cach_item_configs)
+                    ->andReturn($mock_cach_item_configs);
+            }
         } else {
             $mock_cache
                 ->shouldReceive('save')
@@ -408,7 +429,7 @@ class AdfsConfigurationTest extends MockeryTestCase
             ->andReturn($mock_cach_item_jwks);
         
         if ($is_hit) {
-            if (!$error) {
+            if (!$jwk_error) {
                 $mock_cache
                     ->shouldNotReceive('save')
                     ->with($mock_cach_item_jwks);
