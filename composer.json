@@ -11,7 +11,7 @@
     "ad",
     "microsoft"
   ],
-  "version": "1.2.0",
+  "version": "1.2.1",
   "authors": [
     {
       "name": "Neuman Vong",
@@ -28,8 +28,8 @@
   ],
   "license": "BSD-3-Clause",
   "require": {
-    "php": ">=7.0",
-    "symfony/cache": "^4.4"
+    "php": ">=7.1.3",
+    "symfony/cache": "^4.4 || ^5.0"
   },
   "require-dev": {
     "php-coveralls/php-coveralls": "^2.3",

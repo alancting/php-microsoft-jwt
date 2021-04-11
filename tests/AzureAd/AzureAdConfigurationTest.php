@@ -78,7 +78,7 @@ class AzureAdConfigurationTest extends MockeryTestCase
     {
         ($this->default_configs)['config_uri'] = 'http://127.0.0.1/not_exists';
         $config = new AzureAdConfiguration($this->default_configs);
-
+        
         $this->assertEquals($config->getLoadStatus(), [
             'status' => false,
             'error' => 'Configuration not found',
@@ -194,11 +194,7 @@ class AzureAdConfigurationTest extends MockeryTestCase
             'path' => 'any_file_path'
         ];
 
-        $this->mockCacheConfig(
-            'FilesystemAdapter', 
-            false, 
-            false);
-        
+        $this->mockCacheConfig('FilesystemAdapter', false);
         $config = new AzureAdConfiguration($this->default_configs);
         $this->commonConstructorAssert($config);
     }
@@ -212,16 +208,12 @@ class AzureAdConfigurationTest extends MockeryTestCase
             'path' => 'any_file_path'
         ];
 
-        $this->mockCacheConfig(
-            'FilesystemAdapter', 
-            true, 
-            false);
-        
+        $this->mockCacheConfig('FilesystemAdapter', true);
         $config = new AzureAdConfiguration($this->default_configs);
         $this->commonConstructorAssert($config);
     }
 
-    public function testConstructorWithFileCacheExistsWithError()
+    public function testConstructorWithFileCacheExistsWithConfigError()
     {
         \DG\BypassFinals::enable();
         
@@ -230,11 +222,21 @@ class AzureAdConfigurationTest extends MockeryTestCase
             'path' => 'any_file_path'
         ];
 
-        $this->mockCacheConfig(
-            'FilesystemAdapter', 
-            true, 
-            true);
+        $this->mockCacheConfig('FilesystemAdapter', true, true, false);
+        $config = new AzureAdConfiguration($this->default_configs);
+        $this->commonConstructorAssert($config);
+    }
+
+    public function testConstructorWithFileCacheExistsWithJwkError()
+    {
+        \DG\BypassFinals::enable();
         
+        ($this->default_configs)['cache'] = [
+            'type' => 'file',
+            'path' => 'any_file_path'
+        ];
+
+        $this->mockCacheConfig('FilesystemAdapter', true, false, true);
         $config = new AzureAdConfiguration($this->default_configs);
         $this->commonConstructorAssert($config);
     }
@@ -248,11 +250,7 @@ class AzureAdConfigurationTest extends MockeryTestCase
             'client' => $this->createStub(\Redis::class)
         ];
 
-        $this->mockCacheConfig(
-            'RedisAdapter', 
-            false, 
-            false);
-        
+        $this->mockCacheConfig('RedisAdapter', false);
         $config = new AzureAdConfiguration($this->default_configs);
         $this->commonConstructorAssert($config);
     }
@@ -266,16 +264,12 @@ class AzureAdConfigurationTest extends MockeryTestCase
             'client' => $this->createStub(\Redis::class)
         ];
 
-        $this->mockCacheConfig(
-            'RedisAdapter', 
-            true, 
-            false);
-        
+        $this->mockCacheConfig('RedisAdapter', true);
         $config = new AzureAdConfiguration($this->default_configs);
         $this->commonConstructorAssert($config);
     }
 
-    public function testConstructorWithRedisCacheExistsWithError()
+    public function testConstructorWithRedisCacheExistsWithConfigsError()
     {
         \DG\BypassFinals::enable();
         
@@ -284,11 +278,21 @@ class AzureAdConfigurationTest extends MockeryTestCase
             'client' => $this->createStub(\Redis::class)
         ];
 
-        $this->mockCacheConfig(
-            'RedisAdapter', 
-            true, 
-            true);
+        $this->mockCacheConfig('RedisAdapter', true, true, false);
+        $config = new AzureAdConfiguration($this->default_configs);
+        $this->commonConstructorAssert($config);
+    }
+
+    public function testConstructorWithRedisCacheExistsWithJwkError()
+    {
+        \DG\BypassFinals::enable();
         
+        ($this->default_configs)['cache'] = [
+            'type' => 'redis',
+            'client' => $this->createStub(\Redis::class)
+        ];
+
+        $this->mockCacheConfig('RedisAdapter', true, false, true);
         $config = new AzureAdConfiguration($this->default_configs);
         $this->commonConstructorAssert($config);
     }
@@ -302,11 +306,7 @@ class AzureAdConfigurationTest extends MockeryTestCase
             'client' => $this->createStub(\Memcached::class)
         ];
 
-        $this->mockCacheConfig(
-            'MemcachedAdapter', 
-            false, 
-            false);
-        
+        $this->mockCacheConfig('MemcachedAdapter', false);
         $config = new AzureAdConfiguration($this->default_configs);
         $this->commonConstructorAssert($config);
     }
@@ -320,16 +320,12 @@ class AzureAdConfigurationTest extends MockeryTestCase
             'client' => $this->createStub(\Memcached::class)
         ];
 
-        $this->mockCacheConfig(
-            'MemcachedAdapter', 
-            true, 
-            false);
-        
+        $this->mockCacheConfig('MemcachedAdapter', true);
         $config = new AzureAdConfiguration($this->default_configs);
         $this->commonConstructorAssert($config);
     }
 
-    public function testConstructorWithMemcachedCacheExistsWithError()
+    public function testConstructorWithMemcachedCacheExistsWithConfigError()
     {
         \DG\BypassFinals::enable();
         
@@ -338,11 +334,21 @@ class AzureAdConfigurationTest extends MockeryTestCase
             'client' => $this->createStub(\Memcached::class)
         ];
 
-        $this->mockCacheConfig(
-            'MemcachedAdapter', 
-            true, 
-            true);
+        $this->mockCacheConfig('MemcachedAdapter', true, true, false);
+        $config = new AzureAdConfiguration($this->default_configs);
+        $this->commonConstructorAssert($config);
+    }
+
+    public function testConstructorWithMemcachedCacheExistsWithJwkError()
+    {
+        \DG\BypassFinals::enable();
         
+        ($this->default_configs)['cache'] = [
+            'type' => 'memcache',
+            'client' => $this->createStub(\Memcached::class)
+        ];
+
+        $this->mockCacheConfig('MemcachedAdapter', true, false, true);
         $config = new AzureAdConfiguration($this->default_configs);
         $this->commonConstructorAssert($config);
     }
@@ -385,12 +391,20 @@ class AzureAdConfigurationTest extends MockeryTestCase
         $this->assertEquals($config->getEndSessionEndpoint(), 'https://login.microsoftonline.com/iv9puejd-qmJ1-AL2i-j3TP-wrb7qjjvxttz/oauth2/v2.0/logout');
     }
 
-    private function mockCacheConfig($cache_class, $is_hit, $error = false)
+    private function mockCacheConfig($cache_class, $is_hit, $config_error = false, $jwk_error = false)
     {
-        $mock_cach_item_configs = $this->getMockCachItem(
-            $is_hit, 
-            file_get_contents(($this->default_configs)['config_uri']));
-        if (!$error) {
+        if (!$config_error) {
+            $mock_cach_item_configs = $this->getMockCachItem(
+                $is_hit, 
+                file_get_contents(($this->default_configs)['config_uri']));
+        } else {
+            $mock_cach_item_configs = $this->getMockCachItem(
+                $is_hit, 
+                file_get_contents(($this->default_configs)['config_uri']),
+                json_encode([]));
+        }
+        
+        if (!$jwk_error) {
             $mock_cach_item_jwks = $this->getMockCachItem(
                 $is_hit, 
                 file_get_contents(__DIR__.'/../../tests/metadata/azure_ad/configuration/jwks_uri.json'));
@@ -398,7 +412,7 @@ class AzureAdConfigurationTest extends MockeryTestCase
             $mock_cach_item_jwks = $this->getMockCachItem(
                 $is_hit, 
                 file_get_contents(__DIR__.'/../../tests/metadata/azure_ad/configuration/jwks_uri.json'),
-                file_get_contents(($this->default_configs)['config_uri']));
+                json_encode([]));
         }
         
         $mock_cache = Mockery::mock(sprintf('overload:Symfony\Component\Cache\Adapter\%s', $cache_class));
@@ -407,10 +421,18 @@ class AzureAdConfigurationTest extends MockeryTestCase
             ->shouldReceive('getItem')
             ->with(MicrosoftConfiguration::CACHE_KEY_CONFIGS)
             ->andReturn($mock_cach_item_configs);
+
         if ($is_hit) {
-            $mock_cache
-                ->shouldNotReceive('save')
-                ->with($mock_cach_item_configs);
+            if (!$config_error) {
+                $mock_cache
+                    ->shouldNotReceive('save')
+                    ->with($mock_cach_item_configs);
+            } else {
+                $mock_cache
+                ->shouldReceive('save')
+                ->with($mock_cach_item_configs)
+                ->andReturn($mock_cach_item_configs);
+            }
         } else {
             $mock_cache
                 ->shouldReceive('save')
@@ -424,7 +446,7 @@ class AzureAdConfigurationTest extends MockeryTestCase
             ->andReturn($mock_cach_item_jwks);
         
         if ($is_hit) {
-            if (!$error) {
+            if (!$jwk_error) {
                 $mock_cache
                     ->shouldNotReceive('save')
                     ->with($mock_cach_item_jwks);
@@ -471,6 +493,7 @@ class AzureAdConfigurationTest extends MockeryTestCase
                 ->shouldReceive('get')
                 ->andReturn($cached_error_result, $cached_result);
         }
+        
         return $mock_cach_item;
     }
 }
